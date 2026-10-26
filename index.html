@@ -1270,6 +1270,138 @@ function chatPatch(){
               }
               ensureQuickSheet();
               if(co)new MutationObserver(ensureQuickSheet).observe(co,{childList:true});
+
+                    /* 16. Drag handles: pull a popup down to close it */
+                    function makeHandle(target,closeFn){
+                      var h=d.createElement("div");
+                      h.className="ep-handle";
+                      h.innerHTML="<span></span>";
+                      var y0=0,dy=0,on=false;
+                      h.addEventListener("pointerdown",function(e){
+                        on=true;y0=e.clientY;dy=0;
+                        target.style.transition="none";
+                        try{h.setPointerCapture(e.pointerId);}catch(x){}
+                      });
+                      h.addEventListener("pointermove",function(e){
+                        if(!on)return;
+                        dy=Math.max(0,e.clientY-y0);
+                        target.style.transform="translateY("+dy+"px)";
+                      });
+                      function release(cancel){
+                        if(!on)return;
+                        on=false;
+                        target.style.transition="transform .18s ease";
+                        if(!cancel&&dy>70){
+                          target.style.transform="translateY(110%)";
+                          setTimeout(function(){
+                            closeFn();
+                            target.style.transition="";
+                            target.style.transform="";
+                          },180);
+                        }else{
+                          target.style.transform="";
+                          setTimeout(function(){target.style.transition="";},200);
+                        }
+                      }
+                      h.addEventListener("pointerup",function(){release(false);});
+                      h.addEventListener("pointercancel",function(){release(true);});
+                      return h;
+                    }
+                    function hasHandle(el){return !!el.firstElementChild&&el.firstElementChild.classList.contains("ep-handle");}
+                    function ensureHandles(){
+                      /* emoji / GIF / sticker panel (its content is rebuilt, so re-add when missing) */
+                      if(!hasHandle(panel)){
+                        panel.insertBefore(makeHandle(panel,function(){panel.classList.remove("show");}),panel.firstChild);
+                      }
+                      /* reaction "more" sheet */
+                      var sh=d.querySelector(".ig-emoji-more");
+                      if(sh&&!hasHandle(sh)){
+                        sh.insertBefore(makeHandle(sh,function(){
+                          var o=d.getElementById("contextOverlay");
+                          if(o)o.style.display="none";
+                          sh.style.display="none";
+                          var cm=d.querySelector(".context-menu");
+                          if(cm)cm.style.visibility="";
+                        }),sh.firstChild);
+                      }
+                      /* settings popup */
+                      var sp=d.querySelector(".settings-popup");
+                      if(sp&&!hasHandle(sp)){
+                        sp.insertBefore(makeHandle(sp,function(){
+                          var cb=d.getElementById("closeSettingsBtn");
+                          if(cb)cb.click();
+                        }),sp.firstChild);
+                      }
+                    }
+                    ensureHandles();
+                    new MutationObserver(ensureHandles).observe(panel,{childList:true});
+                    if(co)new MutationObserver(ensureHandles).observe(co,{childList:true});
+
+                    /* 16. Drag handles: pull a popup down to close it */
+                    function makeHandle(target,closeFn){
+                      var h=d.createElement("div");
+                      h.className="ep-handle";
+                      h.innerHTML="<span></span>";
+                      var y0=0,dy=0,on=false;
+                      h.addEventListener("pointerdown",function(e){
+                        on=true;y0=e.clientY;dy=0;
+                        target.style.transition="none";
+                        try{h.setPointerCapture(e.pointerId);}catch(x){}
+                      });
+                      h.addEventListener("pointermove",function(e){
+                        if(!on)return;
+                        dy=Math.max(0,e.clientY-y0);
+                        target.style.transform="translateY("+dy+"px)";
+                      });
+                      function release(cancel){
+                        if(!on)return;
+                        on=false;
+                        target.style.transition="transform .18s ease";
+                        if(!cancel&&dy>70){
+                          target.style.transform="translateY(110%)";
+                          setTimeout(function(){
+                            closeFn();
+                            target.style.transition="";
+                            target.style.transform="";
+                          },180);
+                        }else{
+                          target.style.transform="";
+                          setTimeout(function(){target.style.transition="";},200);
+                        }
+                      }
+                      h.addEventListener("pointerup",function(){release(false);});
+                      h.addEventListener("pointercancel",function(){release(true);});
+                      return h;
+                    }
+                    function hasHandle(el){return !!el.firstElementChild&&el.firstElementChild.classList.contains("ep-handle");}
+                    function ensureHandles(){
+                      /* emoji / GIF / sticker panel (its content is rebuilt, so re-add when missing) */
+                      if(!hasHandle(panel)){
+                        panel.insertBefore(makeHandle(panel,function(){panel.classList.remove("show");}),panel.firstChild);
+                      }
+                      /* reaction "more" sheet */
+                      var sh=d.querySelector(".ig-emoji-more");
+                      if(sh&&!hasHandle(sh)){
+                        sh.insertBefore(makeHandle(sh,function(){
+                          var o=d.getElementById("contextOverlay");
+                          if(o)o.style.display="none";
+                          sh.style.display="none";
+                          var cm=d.querySelector(".context-menu");
+                          if(cm)cm.style.visibility="";
+                        }),sh.firstChild);
+                      }
+                      /* settings popup */
+                      var sp=d.querySelector(".settings-popup");
+                      if(sp&&!hasHandle(sp)){
+                        sp.insertBefore(makeHandle(sp,function(){
+                          var cb=d.getElementById("closeSettingsBtn");
+                          if(cb)cb.click();
+                        }),sp.firstChild);
+                      }
+                    }
+                    ensureHandles();
+                    new MutationObserver(ensureHandles).observe(panel,{childList:true});
+                    if(co)new MutationObserver(ensureHandles).observe(co,{childList:true});
 }
 function chatHtml(){
   const h=new TextDecoder().decode(Uint8Array.from(atob(CHAT_B64),c=>c.charCodeAt(0)));
