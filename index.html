@@ -480,6 +480,8 @@ const CHAT_PATCH_CSS='<style>'
 +'.dd-item.on svg{opacity:1}'
 +'.dd-item:active{background:var(--border)}'
 +'@media(hover:hover){.dd-item:hover{background:rgba(255,255,255,.1)}}'
++'.settings-popup .popup-row:has(#myNotificationsToggle){display:flex!important}'
++'#hunterMasterControlRow{display:flex!important}'
 +'</style>';
 function chatPatch(){
   var d=document;
