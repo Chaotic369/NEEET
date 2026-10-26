@@ -382,6 +382,8 @@ const CHAT_PATCH_CSS='<style>'
 +'#toBottom.show{display:flex}'
 +'#toBottom:active{opacity:.6}'
 +'#emojiPanel.show~#toBottom{display:none}'
++'.input{position:relative;z-index:50}'
++'html,body{overflow:hidden!important;overscroll-behavior:none}'
 +'</style>';
 function chatPatch(){
   var d=document;
@@ -714,7 +716,19 @@ function chatPatch(){
       if(co.style.display==="block"){panel.classList.remove("show");if(am)am.classList.remove("show");}
     }).observe(co,{attributes:true,attributeFilter:["style"]});
 
-    /* 7. Scroll-to-bottom button */
+    /* 6b. Undo browser auto-scroll of the page (keyboard / focus) */
+      function fixPage(){
+        var de=d.documentElement,bd=d.body;
+        if(de.scrollLeft||de.scrollTop||bd.scrollLeft||bd.scrollTop||window.scrollX||window.scrollY){
+          de.scrollLeft=0;de.scrollTop=0;bd.scrollLeft=0;bd.scrollTop=0;
+          try{window.scrollTo(0,0);}catch(e){}
+        }
+      }
+      window.addEventListener("scroll",fixPage,{passive:true});
+      d.addEventListener("focusin",function(){setTimeout(fixPage,60);setTimeout(fixPage,350);});
+      if(window.visualViewport)window.visualViewport.addEventListener("resize",function(){setTimeout(fixPage,60);});
+
+      /* 7. Scroll-to-bottom button */
     var tb=d.createElement("div");
     tb.id="toBottom";
     tb.title="Latest";
