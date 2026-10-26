@@ -482,8 +482,11 @@ const CHAT_PATCH_CSS='<style>'
 +'@media(hover:hover){.dd-item:hover{background:rgba(255,255,255,.1)}}'
 +'.settings-popup .popup-row:has(#myNotificationsToggle){display:flex!important}'
 +'#hunterMasterControlRow{display:flex!important}'
-+'.settings-popup{overflow-y:auto!important;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:14px!important}'
-+'.settings-popup .popup-done-btn{position:sticky!important;bottom:14px;z-index:5;box-shadow:0 0 0 14px var(--panel)!important}'
++'.settings-popup{display:flex!important;flex-direction:column;overflow:hidden!important;padding-bottom:14px!important}'
++'.settings-popup .ep-handle{flex:none}'
++'.settings-popup .sp-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -6px;padding:0 6px 4px}'
++'.settings-popup .sp-scroll::-webkit-scrollbar{display:none}'
++'.settings-popup .popup-done-btn{position:static!important;flex:none;width:100%;margin-top:12px!important;box-shadow:0 6px 18px rgba(0,0,0,.35)!important}'
 +'.settings-popup .popup-row:has(#myNotificationsToggle){display:flex!important}'
 +'#hunterMasterControlRow{display:flex!important}'
 +'</style>';
@@ -1370,7 +1373,19 @@ function chatPatch(){
                   if(ddPrev)ddPrev.addEventListener("click",function(e){e.preventDefault();});
                   ddLabel();
                   setInterval(ddLabel,500);
-                }
+                          }
+
+                          /* Scrollable settings body, Done stays pinned below it */
+                          var spWrap=d.querySelector(".settings-popup");
+                          if(spWrap&&!spWrap.querySelector(".sp-scroll")){
+                            var spScroll=d.createElement("div");
+                            spScroll.className="sp-scroll";
+                            var spKids=Array.prototype.slice.call(spWrap.children).filter(function(n){
+                              return n!==doneBtn&&!n.classList.contains("ep-handle");
+                            });
+                            spWrap.insertBefore(spScroll,spKids[0]||doneBtn);
+                            spKids.forEach(function(n){spScroll.appendChild(n);});
+                          }
               }
 
               /* 15. Quick reactions: drag an emoji from the "more" sheet onto a slot to replace a default */
