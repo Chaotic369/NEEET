@@ -507,16 +507,19 @@ function openChat(){
   if(chatLayer)return;
   chatLayer=document.createElement("div");
   chatLayer.id="chatLayer";
-  chatLayer.innerHTML='<div class="chat-strip"><button type="button" aria-label="Close">\u2715</button></div>';
-  const f=document.createElement("iframe");
+  chatLayer.style.padding="0";
+    const f=document.createElement("iframe");
+    f.style.cssText="position:absolute;top:0;left:0;width:100%;height:100%;border:0;margin:0;display:block";
   f.setAttribute("allow","camera; microphone; display-capture; autoplay; clipboard-write; fullscreen");
   f.srcdoc=chatHtml();
   chatLayer.appendChild(f);
-  chatLayer.querySelector("button").onclick=closeChat;
   document.body.appendChild(chatLayer);
+    document.addEventListener("keydown",chatEsc);
   document.documentElement.style.overflow="hidden";
 }
+function chatEsc(e){if(e.key==="Escape")closeChat()}
 function closeChat(){
+  document.removeEventListener("keydown",chatEsc);
   if(!chatLayer)return;
   const f=chatLayer.querySelector("iframe");
   if(f)f.srcdoc="";
