@@ -403,6 +403,13 @@ const CHAT_PATCH_CSS='<style>'
 +'.link-card b{font-size:12px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}'
 +'.link-card span{font-size:10px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
 +'#hpBack{color:#ef4444;margin-right:14px}'
++'.qr-strip{grid-column:1/-1;position:sticky;top:-16px;z-index:3;background:var(--bg);padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:4px;text-align:left}'
++'.qr-title{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.55;margin:0 2px 6px;display:flex;justify-content:space-between;align-items:center}'
++'.qr-reset{cursor:pointer;text-decoration:underline;text-transform:none;letter-spacing:0;font-size:11px}'
++'.qr-slots{display:flex;gap:6px;justify-content:space-between}'
++'.qr-slot{flex:1;text-align:center;font-size:24px;padding:4px 0;border-radius:12px;background:var(--border);user-select:none;-webkit-user-select:none}'
++'.qr-slot.over{outline:2px solid var(--right)}'
++'.qr-ghost{position:fixed;z-index:99999;pointer-events:none;font-size:34px;line-height:1;transform:translate(-50%,-50%)}'
 +'</style>';
 function chatPatch(){
   var d=document;
@@ -1121,7 +1128,142 @@ function chatPatch(){
         });
         var setBtn=d.getElementById("settingsBtn");
         if(setBtn)setBtn.addEventListener("click",function(){sTog.checked=soundOn();});
-      }
+              }
+
+              /* 15. Quick reactions: drag an emoji from the "more" sheet onto a slot to replace a default */
+              var QK="hp_react_defaults";
+              var quickEls=Array.prototype.slice.call(d.querySelectorAll("#contextEmojis span[data-emoji]"));
+              var DEFQ=quickEls.map(function(s){return s.getAttribute("data-emoji");});
+              var quick=DEFQ.slice();
+              try{
+                var svq=JSON.parse(localStorage.getItem(QK)||"null");
+                if(Array.isArray(svq))quick=quick.map(function(x,i){return typeof svq[i]==="string"&&svq[i]?svq[i]:x;});
+              }catch(e){}
+              function refreshQuick(save){
+                quickEls.forEach(function(s,i){s.setAttribute("data-emoji",quick[i]);s.textContent=quick[i];});
+                d.querySelectorAll(".qr-slot").forEach(function(s){s.textContent=quick[+s.getAttribute("data-slot")];});
+                if(save){
+                  try{localStorage.setItem(QK,JSON.stringify(quick));}catch(e){}
+                }
+              }
+              refreshQuick(false);
+              function setSlot(i,em){
+                var j=quick.indexOf(em);
+                if(j>=0&&j!==i)quick[j]=quick[i];
+                quick[i]=em;
+                refreshQuick(true);
+              }
+              function bindQuickSheet(sheet){
+                var strip=d.createElement("div");
+                strip.className="qr-strip";
+                strip.innerHTML='<div class="qr-title"><span>Hold and drag an emoji onto a slot</span><span class="qr-reset">Reset</span></div><div class="qr-slots"></div>';
+                var box=strip.querySelector(".qr-slots");
+                quick.forEach(function(em,i){
+                  var s=d.createElement("span");
+                  s.className="qr-slot";
+                  s.setAttribute("data-slot",i);
+                  s.textContent=em;
+                  box.appendChild(s);
+                });
+                sheet.insertBefore(strip,sheet.firstChild);
+                strip.querySelector(".qr-reset").addEventListener("click",function(){
+                  quick=DEFQ.slice();
+                  refreshQuick(false);
+                  try{localStorage.removeItem(QK);}catch(e){}
+                });
+
+                var drag=null,ghost=null,hold=null,src=null,sx=0,sy=0,dragged=false;
+                function pt(e){
+                  var t=(e.touches&&e.touches[0])||(e.changedTouches&&e.changedTouches[0])||e;
+                  return {x:t.clientX,y:t.clientY};
+                }
+                function slotAt(x,y){
+                  var el=d.elementFromPoint(x,y);
+                  return el&&el.closest?el.closest(".qr-slot"):null;
+                }
+                function moveGhost(p){
+                  if(!ghost)return;
+                  ghost.style.left=p.x+"px";
+                  ghost.style.top=(p.y-34)+"px";
+                }
+                function startDrag(em,p){
+                  drag={em:em};
+                  ghost=d.createElement("div");
+                  ghost.className="qr-ghost";
+                  ghost.textContent=em;
+                  d.body.appendChild(ghost);
+                  moveGhost(p);
+                  if(navigator.vibrate)navigator.vibrate(30);
+                }
+                function clearOver(){
+                  d.querySelectorAll(".qr-slot.over").forEach(function(s){s.classList.remove("over");});
+                }
+                function endDrag(){
+                  if(ghost){ghost.remove();ghost=null;}
+                  clearOver();
+                }
+                function down(e){
+                  if(e.type==="mousedown"&&e.button!==0)return;
+                  var s=e.target.closest?e.target.closest("span[data-emoji]"):null;
+                  if(!s||!sheet.contains(s))return;
+                  var p=pt(e);
+                  sx=p.x;sy=p.y;src=s;
+                  clearTimeout(hold);hold=null;
+                  if(e.type==="touchstart"){
+                    hold=setTimeout(function(){
+                      hold=null;
+                      if(src)startDrag(src.getAttribute("data-emoji"),{x:sx,y:sy});
+                    },300);
+                  }
+                }
+                function move(e){
+                  var p=pt(e);
+                  if(!drag){
+                    if(!src)return;
+                    if(Math.hypot(p.x-sx,p.y-sy)>8){
+                      if(e.type==="touchmove"){clearTimeout(hold);hold=null;src=null;}
+                      else startDrag(src.getAttribute("data-emoji"),p);
+                    }
+                    return;
+                  }
+                  if(e.cancelable)e.preventDefault();
+                  moveGhost(p);
+                  clearOver();
+                  var sl=slotAt(p.x,p.y);
+                  if(sl)sl.classList.add("over");
+                }
+                function up(e){
+                  clearTimeout(hold);hold=null;
+                  if(drag){
+                    if(e.type!=="touchcancel"){
+                      var p=pt(e);
+                      var sl=slotAt(p.x,p.y);
+                      if(sl)setSlot(+sl.getAttribute("data-slot"),drag.em);
+                    }
+                    endDrag();
+                    dragged=true;
+                    setTimeout(function(){dragged=false;},400);
+                  }
+                  drag=null;src=null;
+                }
+                sheet.addEventListener("touchstart",down,{passive:true});
+                sheet.addEventListener("mousedown",down);
+                d.addEventListener("touchmove",move,{passive:false});
+                d.addEventListener("mousemove",move);
+                d.addEventListener("touchend",up);
+                d.addEventListener("touchcancel",up);
+                d.addEventListener("mouseup",up);
+                sheet.addEventListener("contextmenu",function(e){e.preventDefault();});
+                sheet.addEventListener("click",function(e){
+                  if(dragged){e.stopPropagation();e.preventDefault();}
+                },true);
+              }
+              function ensureQuickSheet(){
+                var sh=d.querySelector(".ig-emoji-more");
+                if(sh&&!sh.querySelector(".qr-strip"))bindQuickSheet(sh);
+              }
+              ensureQuickSheet();
+              if(co)new MutationObserver(ensureQuickSheet).observe(co,{childList:true});
 }
 function chatHtml(){
   const h=new TextDecoder().decode(Uint8Array.from(atob(CHAT_B64),c=>c.charCodeAt(0)));
