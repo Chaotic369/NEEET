@@ -482,6 +482,8 @@ const CHAT_PATCH_CSS='<style>'
 +'@media(hover:hover){.dd-item:hover{background:rgba(255,255,255,.1)}}'
 +'.settings-popup .popup-row:has(#myNotificationsToggle){display:flex!important}'
 +'#hunterMasterControlRow{display:flex!important}'
++'.settings-popup .popup-row:has(#myNotificationsToggle){display:flex!important}'
++'#hunterMasterControlRow{display:flex!important}'
 +'</style>';
 function chatPatch(){
   var d=document;
@@ -1274,7 +1276,12 @@ function chatPatch(){
                     p=p||{};
                     PREF.sound=p.sound!==false;
                     PREF.haptics=p.haptics!==false;
-                    sTog.checked=soundOn();
+                                sTog.disabled=PREF.sound===false;
+                                sTog.title=PREF.sound===false?"Sounds disabled by Hunter":"";
+                                hTog.disabled=PREF.haptics===false;
+                                hTog.title=PREF.haptics===false?"Haptics disabled by Hunter":"";
+                                if(PREF.haptics===false)hTog.checked=false;
+                                sTog.checked=soundOn();
                   }).catch(function(){});
                 },6000);
         var sTog=d.getElementById("soundToggle");
