@@ -373,6 +373,15 @@ const CHAT_PATCH_CSS='<style>'
 +'#gifGrid img{width:100%;display:block;margin-bottom:4px;border-radius:8px;cursor:pointer;background:var(--border);min-height:40px}'
 +'.bubble.gif-only{background:transparent!important;padding:0!important}'
 +'.bubble.gif-only .gif-img{display:block;width:200px;max-width:100%;border-radius:14px}'
++'.input{gap:6px}'
++'.messages{overscroll-behavior:contain}'
++'#emojiPanel{left:8px;right:8px;max-width:none;margin:0 0 8px;max-height:min(300px,42vh);overscroll-behavior:contain;scrollbar-width:thin;z-index:40}'
++'#emojiPanel .ep-grid{grid-template-columns:repeat(auto-fill,minmax(38px,1fr))}'
++'.attachment-menu{z-index:40}'
++'#toBottom{position:absolute;right:14px;bottom:calc(100% + 10px);width:38px;height:38px;border-radius:50%;background:var(--panel);border:1px solid var(--border);color:var(--text);display:none;align-items:center;justify-content:center;cursor:pointer;z-index:30}'
++'#toBottom.show{display:flex}'
++'#toBottom:active{opacity:.6}'
++'#emojiPanel.show~#toBottom{display:none}'
 +'</style>';
 function chatPatch(){
   var d=document;
@@ -646,6 +655,75 @@ function chatPatch(){
       if(path.indexOf(panel)<0&&path.indexOf(btn)<0)panel.classList.remove("show");
     });
   d.addEventListener("keydown",function(e){if(e.key==="Escape")panel.classList.remove("show");});
+
+    /* 6. Layer manager: one popup at a time, Esc / Back closes the top layer */
+    var am=d.getElementById("attachMenu"),ab=d.getElementById("attachBtn");
+    function flex(id){var e=d.getElementById(id);return !!e&&e.style.display==="flex";}
+    function unshow(sel){var e=d.querySelector(sel);if(e)e.classList.remove("show");}
+    var LY=[
+      {o:function(){return flex("hunterDevicePanel");},c:function(){d.getElementById("hunterDeviceClose").click();}},
+      {o:function(){return flex("cropModal");},c:function(){d.getElementById("cropCancel").click();}},
+      {o:function(){return !!d.querySelector(".del-confirm.show");},c:function(){unshow(".del-confirm.show");}},
+      {o:function(){var e=d.getElementById("contextOverlay");return !!e&&e.style.display==="block";},c:function(){
+        d.getElementById("contextOverlay").style.display="none";
+        var sh=d.querySelector(".ig-emoji-more");if(sh)sh.style.display="none";
+        var cm=d.querySelector(".context-menu");if(cm)cm.style.visibility="";
+      }},
+      {o:function(){return !!d.querySelector(".av-overlay.show");},c:function(){unshow(".av-overlay.show");}},
+      {o:function(){return !!d.querySelector(".cp-overlay.show");},c:function(){d.getElementById("cpCancel").click();}},
+      {o:function(){return flex("settingsModal");},c:function(){d.getElementById("closeSettingsBtn").click();}},
+      {o:function(){return !!d.querySelector(".call-confirm.show");},c:function(){unshow(".call-confirm.show");}},
+      {o:function(){return flex("viewer");},c:function(){d.getElementById("closeViewer").click();}},
+      {o:function(){return panel.classList.contains("show");},c:function(){panel.classList.remove("show");}},
+      {o:function(){return !!am&&am.classList.contains("show");},c:function(){am.classList.remove("show");}}
+    ];
+    function topLayer(){for(var i=0;i<LY.length;i++){if(LY[i].o())return LY[i];}return null;}
+    function closeTop(){var l=topLayer();if(l){l.c();return true;}return false;}
+    d.addEventListener("keydown",function(e){
+      if(e.key==="Escape"&&closeTop()){e.stopImmediatePropagation();e.preventDefault();}
+    },true);
+
+    /* Back button closes the top layer */
+    var pushed=false,skipPop=false;
+    setInterval(function(){
+      var open=!!topLayer();
+      if(open&&!pushed){
+        try{history.pushState({hpLayer:1},"");pushed=true;}catch(e){}
+      }else if(!open&&pushed){
+        pushed=false;
+        if(history.state&&history.state.hpLayer){
+          skipPop=true;
+          setTimeout(function(){skipPop=false;},600);
+          try{history.back();}catch(e){skipPop=false;}
+        }
+      }
+    },200);
+    window.addEventListener("popstate",function(){
+      if(skipPop){skipPop=false;return;}
+      if(pushed){pushed=false;closeTop();}
+    });
+
+    /* One popup at a time */
+    if(ab)ab.addEventListener("click",function(){panel.classList.remove("show");},true);
+    btn.addEventListener("click",function(){
+      if(am)am.classList.remove("show");
+      if(!panel.classList.contains("show")&&window.matchMedia&&matchMedia("(pointer:coarse)").matches)ta.blur();
+    },true);
+    ta.addEventListener("focus",function(){panel.classList.remove("show");});
+    if(co)new MutationObserver(function(){
+      if(co.style.display==="block"){panel.classList.remove("show");if(am)am.classList.remove("show");}
+    }).observe(co,{attributes:true,attributeFilter:["style"]});
+
+    /* 7. Scroll-to-bottom button */
+    var tb=d.createElement("div");
+    tb.id="toBottom";
+    tb.title="Latest";
+    tb.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+    input.appendChild(tb);
+    function chkTb(){tb.classList.toggle("show",(msgs.scrollHeight-msgs.clientHeight-msgs.scrollTop)>240);}
+    msgs.addEventListener("scroll",chkTb,{passive:true});
+    new MutationObserver(chkTb).observe(msgs,{childList:true});
+    tb.addEventListener("click",function(){msgs.scrollTo({top:msgs.scrollHeight,behavior:"smooth"});});
 }
 function chatHtml(){
   const h=new TextDecoder().decode(Uint8Array.from(atob(CHAT_B64),c=>c.charCodeAt(0)));
@@ -666,6 +744,8 @@ function openChat(){
   chatLayer.appendChild(f);
   document.body.appendChild(chatLayer);
     document.addEventListener("keydown",chatEsc);
+      try{history.pushState({hpChat:1},"")}catch(e){}
+      window.addEventListener("popstate",chatPop);
   document.documentElement.style.overflow="hidden";
 }
 function chatEsc(e){if(e.key==="Escape")closeChat()}
@@ -675,8 +755,11 @@ function closeChat(){
   const f=chatLayer.querySelector("iframe");
   if(f)f.srcdoc="";
   chatLayer.remove();chatLayer=null;
-  document.documentElement.style.overflow="";
-}
+    document.documentElement.style.overflow="";
+    window.removeEventListener("popstate",chatPop);
+    if(history.state&&history.state.hpChat){try{history.back()}catch(e){}}
+  }
+  function chatPop(){if(chatLayer&&!(history.state&&history.state.hpChat))closeChat()}
 document.getElementById("secretBtn").addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openChat()});
 </script>
 </body>
