@@ -375,7 +375,7 @@ const CHAT_PATCH_CSS='<style>'
 +'.bubble.gif-only .gif-img{display:block;width:200px;max-width:100%;border-radius:14px}'
 +'.input{gap:6px}'
 +'.messages{overscroll-behavior:contain}'
-+'#emojiPanel{left:8px;right:8px;max-width:none;margin:0 0 8px;max-height:min(300px,42vh);overscroll-behavior:contain;scrollbar-width:thin;z-index:40}'
++'#emojiPanel{left:8px;right:8px;max-width:none;margin:0 0 8px;height:min(300px,42vh);max-height:none;overscroll-behavior:contain;scrollbar-width:thin;z-index:40}'
 +'#emojiPanel .ep-grid{grid-template-columns:repeat(auto-fill,minmax(38px,1fr))}'
 +'.attachment-menu{z-index:40}'
 +'#toBottom{position:absolute;right:14px;bottom:calc(100% + 10px);width:38px;height:38px;border-radius:50%;background:var(--panel);border:1px solid var(--border);color:var(--text);display:none;align-items:center;justify-content:center;cursor:pointer;z-index:30}'
@@ -634,7 +634,8 @@ function chatPatch(){
       if(g)sendGif(g.getAttribute("data-g"));
     });
     function build(){
-      if(tab==="gif"||tab==="sticker"){buildGif();return;}
+      panel.scrollTop=0;
+          if(tab==="gif"||tab==="sticker"){buildGif();return;}
       var html=tabsHtml();
     var rec=getRecent();
     function sec(title,list){
