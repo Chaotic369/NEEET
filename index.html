@@ -1119,8 +1119,17 @@ function chatPatch(){
       },500);
 
       /* 14. Sounds on/off: separate per user, off by default for prey */
-      function soundOn(){
-        var r=roleNow();
+      var PREF={sound:true,haptics:true};
+            function hapticsOn(){
+              var r=roleNow();
+              try{if(localStorage.getItem("hp_haptics_"+r)==="0")return false;}catch(e){}
+              return !(r==="prey"&&PREF.haptics===false);
+            }
+            var _vb=navigator.vibrate;
+            if(_vb)navigator.vibrate=function(){if(!hapticsOn())return false;return _vb.apply(navigator,arguments);};
+            function soundOn(){
+              var r=roleNow();
+              if(r==="prey"&&PREF.sound===false)return false;
         try{
           var v=localStorage.getItem("hp_sound_"+r);
           if(v==="1")return true;
@@ -1151,6 +1160,81 @@ function chatPatch(){
         soundRow.className="popup-row";
         soundRow.innerHTML='<span class="popup-row-label">Sounds</span><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;user-select:none"><input type="checkbox" id="soundToggle" style="accent-color:var(--right);width:16px;height:16px;cursor:pointer"><span>Play sounds</span></label>';
         doneBtn.parentNode.insertBefore(soundRow,doneBtn);
+
+                /* Haptics + hunter control of prey alerts / sounds / haptics */
+                var FDB="https://hunter-prey-default-rtdb.firebaseio.com";
+                var roomP=null;
+                function findRoom(){
+                  if(roomP)return roomP;
+                  var pinEl=d.getElementById("entryPinNode");
+                  var pin=pinEl?String(pinEl.value||"").trim():"";
+                  var list=[];
+                  try{list=(localStorage.getItem("hp_allowed_rooms")||"2007").split(",").map(function(x){return x.trim();}).filter(Boolean);}catch(e){list=["2007"];}
+                  roomP=Promise.all(list.map(function(r){
+                    return fetch(FDB+"/rooms/"+r+"/settings/pin.json").then(function(x){return x.json();}).then(function(v){
+                      return {room:r,pin:v==null?r:String(v)};
+                    }).catch(function(){return {room:r,pin:null};});
+                  })).then(function(a){
+                    var hit=a.filter(function(x){return x.pin===pin;})[0];
+                    if(!hit){roomP=null;return null;}
+                    return hit.room;
+                  }).catch(function(){roomP=null;return null;});
+                  return roomP;
+                }
+                function fapi(path,method,body){
+                  return findRoom().then(function(room){
+                    if(!room)throw new Error("no room");
+                    return fetch(FDB+"/rooms/"+room+"/settings/"+path+".json",{method:method||"GET",body:body===undefined?undefined:JSON.stringify(body)}).then(function(r){return r.json();});
+                  });
+                }
+                function addRow(label,id,txt){
+                  var r=d.createElement("div");
+                  r.className="popup-row";
+                  r.innerHTML='<span class="popup-row-label">'+label+'</span><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;user-select:none"><input type="checkbox" id="'+id+'"><span>'+txt+'</span></label>';
+                  doneBtn.parentNode.insertBefore(r,doneBtn);
+                  return d.getElementById(id);
+                }
+                var hTog=addRow("Haptics","hapticsToggle","Vibration");
+                try{hTog.checked=localStorage.getItem("hp_haptics_"+roleNow())!=="0";}catch(e){hTog.checked=true;}
+                hTog.addEventListener("change",function(){
+                  try{localStorage.setItem("hp_haptics_"+roleNow(),hTog.checked?"1":"0");}catch(e){}
+                });
+
+                var pAl=null,pSo=null,pHa=null;
+                if(roleNow()==="hunter"){
+                  var hd=d.createElement("div");
+                  hd.className="popup-section";
+                  hd.textContent="Prey controls";
+                  doneBtn.parentNode.insertBefore(hd,doneBtn);
+                  pAl=addRow("Prey alerts","preyAlertsToggle","Allow alerts");
+                  pSo=addRow("Prey sounds","preySoundsToggle","Allow sounds");
+                  pHa=addRow("Prey haptics","preyHapticsToggle","Allow vibration");
+                  pAl.checked=pSo.checked=pHa.checked=true;
+                  pAl.addEventListener("change",function(){fapi("notificationsAccess/prey","PUT",pAl.checked).catch(function(){});});
+                  pSo.addEventListener("change",function(){fapi("preyPrefs/sound","PUT",pSo.checked).catch(function(){});});
+                  pHa.addEventListener("change",function(){fapi("preyPrefs/haptics","PUT",pHa.checked).catch(function(){});});
+                  var loadPrey=function(){
+                    fapi("notificationsAccess/prey").then(function(v){pAl.checked=v!==false;}).catch(function(){});
+                    fapi("preyPrefs").then(function(p){
+                      p=p||{};
+                      pSo.checked=p.sound!==false;
+                      pHa.checked=p.haptics!==false;
+                    }).catch(function(){});
+                  };
+                  loadPrey();
+                  var sb2=d.getElementById("settingsBtn");
+                  if(sb2)sb2.addEventListener("click",loadPrey);
+                }
+                /* prey device: apply what the hunter allows */
+                setInterval(function(){
+                  if(roleNow()!=="prey")return;
+                  fapi("preyPrefs").then(function(p){
+                    p=p||{};
+                    PREF.sound=p.sound!==false;
+                    PREF.haptics=p.haptics!==false;
+                    sTog.checked=soundOn();
+                  }).catch(function(){});
+                },6000);
         var sTog=d.getElementById("soundToggle");
         sTog.checked=soundOn();
         sTog.addEventListener("change",function(){
