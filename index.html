@@ -537,6 +537,7 @@ function chatPatch(){
   input.appendChild(panel);
   var tab="emoji",gifTimer=null,gifBox=null;
     var GIPHY_KEY="dc6zaTOxFJmzC";
+      try{GIPHY_KEY=localStorage.getItem("hp_giphy_key")||GIPHY_KEY;}catch(e){}
     function tabsHtml(){
       return '<div class="ep-tabs"><span data-tab="emoji"'+(tab==="emoji"?' class="on"':'')+'>Emoji</span><span data-tab="gif"'+(tab==="gif"?' class="on"':'')+'>GIF</span></div>';
     }
@@ -546,8 +547,25 @@ function chatPatch(){
       var u="https://api.giphy.com/v1/gifs/"+(q?"search":"trending")+"?api_key="+encodeURIComponent(GIPHY_KEY)+"&limit=24&rating=pg-13"+(q?"&q="+encodeURIComponent(q):"");
       fetch(u).then(function(r){return r.json();}).then(function(j){
         if(!gifBox)return;
-        var list=(j&&j.data)||[];
-        if(!list.length){gifBox.textContent="No GIFs found";return;}
+        var st=j&&j.meta&&j.meta.status;
+              if(st&&st!==200){
+                gifBox.innerHTML="";
+                var msg=d.createElement("div");
+                msg.textContent="GIPHY rejected the key (error "+st+"). Tap here to add your own free key from developers.giphy.com";
+                msg.style.cssText="cursor:pointer;padding:8px;text-decoration:underline";
+                msg.onclick=function(){
+                  var k=prompt("Paste your GIPHY API key");
+                  if(k&&k.trim()){
+                    try{localStorage.setItem("hp_giphy_key",k.trim());}catch(e){}
+                    GIPHY_KEY=k.trim();
+                    gifLoad(q);
+                  }
+                };
+                gifBox.appendChild(msg);
+                return;
+              }
+              var list=Array.isArray(j&&j.data)?j.data:[];
+              if(!list.length){gifBox.textContent="No GIFs found";return;}
         gifBox.innerHTML="";
         list.forEach(function(g){
           var p=g.images&&(g.images.fixed_width_small||g.images.fixed_width);
@@ -624,8 +642,9 @@ function chatPatch(){
     else{build();panel.classList.add("show");}
   });
   d.addEventListener("click",function(e){
-    if(!e.target.closest("#emojiPanel")&&!e.target.closest("#emojiBtn"))panel.classList.remove("show");
-  });
+      var path=e.composedPath?e.composedPath():[];
+      if(path.indexOf(panel)<0&&path.indexOf(btn)<0)panel.classList.remove("show");
+    });
   d.addEventListener("keydown",function(e){if(e.key==="Escape")panel.classList.remove("show");});
 }
 function chatHtml(){
