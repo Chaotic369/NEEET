@@ -370,6 +370,11 @@ const CHAT_PATCH_CSS='<style>'
 +'#emojiPanel .ep-tabs span.on{opacity:1;background:var(--right);color:#fff}'
 +'#gifSearch{width:100%;margin:2px 0 8px;padding:8px 12px;border:none;outline:none;border-radius:16px;background:var(--border);color:var(--text);font-size:14px;font-family:inherit}'
 +'#gifGrid{columns:2;column-gap:4px;font-size:12px;opacity:.9}'
++'#gifRecent{display:none;flex-wrap:wrap;gap:6px;margin:0 0 8px;align-items:center}'
++'#gifRecent .rs-title{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.45;width:100%}'
++'#gifRecent .rs-chip{padding:4px 10px;border-radius:14px;background:var(--border);font-size:12px;cursor:pointer;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;user-select:none;-webkit-user-select:none}'
++'#gifRecent .rs-chip:active{opacity:.6}'
++'#gifRecent .rs-clear{opacity:.6;text-decoration:underline;background:transparent}'
 +'#gifGrid img{width:100%;display:block;margin-bottom:4px;border-radius:8px;cursor:pointer;background:var(--border);min-height:40px}'
 +'.bubble.gif-only{background:transparent!important;padding:0!important}'
 +'.bubble.gif-only .gif-img{display:block;width:200px;max-width:100%;border-radius:14px}'
@@ -561,7 +566,7 @@ function chatPatch(){
   var panel=d.createElement("div");
   panel.id="emojiPanel";
   input.appendChild(panel);
-  var tab="emoji",gifTimer=null,gifBox=null;
+  var tab="emoji",gifTimer=null,gifBox=null,rsTimer=null;
     var GIPHY_KEY="dc6zaTOxFJmzC";
       try{GIPHY_KEY=localStorage.getItem("hp_giphy_key")||GIPHY_KEY;}catch(e){}
     function tabsHtml(){
@@ -605,15 +610,73 @@ function chatPatch(){
         });
       }).catch(function(){if(gifBox)gifBox.textContent="Couldn't load GIFs";});
     }
-    function buildGif(){
-      panel.innerHTML=tabsHtml()+'<input id="gifSearch" type="search" placeholder="Search '+(tab==="sticker"?"stickers":"GIFs")+' on GIPHY" autocomplete="off"><div id="gifGrid"></div><div class="ep-title">Powered by GIPHY</div>';
+    function getRS(){
+          try{var a=JSON.parse(localStorage.getItem("hp_recent_"+tab)||"[]");return Array.isArray(a)?a:[];}catch(e){return[];}
+        }
+        function addRS(q){
+          if(!q)return;
+          try{
+            var low=q.toLowerCase();
+            var a=[q].concat(getRS().filter(function(x){return String(x).toLowerCase()!==low;})).slice(0,10);
+            localStorage.setItem("hp_recent_"+tab,JSON.stringify(a));
+          }catch(e){}
+        }
+        function renderRS(){
+          var box=d.getElementById("gifRecent");
+          if(!box)return;
+          var a=getRS();
+          box.innerHTML="";
+          box.style.display=a.length?"flex":"none";
+          if(!a.length)return;
+          var ti=d.createElement("div");
+          ti.className="rs-title";
+          ti.textContent="Recent searches";
+          box.appendChild(ti);
+          a.forEach(function(q){
+            var c=d.createElement("span");
+            c.className="rs-chip";
+            c.textContent=q;
+            c.onclick=function(){
+              var inp=d.getElementById("gifSearch");
+              if(inp)inp.value=q;
+              addRS(q);
+              renderRS();
+              gifLoad(q);
+            };
+            box.appendChild(c);
+          });
+          var cl=d.createElement("span");
+          cl.className="rs-chip rs-clear";
+          cl.textContent="Clear";
+          cl.onclick=function(){
+            try{localStorage.removeItem("hp_recent_"+tab);}catch(e){}
+            renderRS();
+          };
+          box.appendChild(cl);
+        }
+        function buildGif(){
+      panel.innerHTML=tabsHtml()+'<input id="gifSearch" type="search" placeholder="Search '+(tab==="sticker"?"stickers":"GIFs")+' on GIPHY" autocomplete="off"><div id="gifRecent"></div><div id="gifGrid"></div><div class="ep-title">Powered by GIPHY</div>';
       gifBox=d.getElementById("gifGrid");
       var inp=d.getElementById("gifSearch");
       inp.addEventListener("input",function(){
         clearTimeout(gifTimer);
         gifTimer=setTimeout(function(){gifLoad(inp.value.trim());},400);
+                clearTimeout(rsTimer);
+                rsTimer=setTimeout(function(){
+                  var v=inp.value.trim();
+                  if(v){addRS(v);renderRS();}
+                },1200);
       });
-      gifLoad("");
+      inp.addEventListener("keydown",function(e){
+              if(e.key==="Enter"){
+                clearTimeout(rsTimer);
+                var v=inp.value.trim();
+                if(v){addRS(v);renderRS();}
+                inp.blur();
+              }
+            });
+            renderRS();
+            gifLoad("");
     }
     function sendGif(url){
       if(!/^https:\/\/[a-z0-9.]*giphy\.com\//i.test(url))return;
