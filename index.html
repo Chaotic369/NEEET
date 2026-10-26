@@ -435,7 +435,21 @@ function chatPatch(){
     }).observe(co,{attributes:true,attributeFilter:["style"]});
   }
 
-  /* 4. Emoji picker inside the input bar */
+  /* 5. Close the reaction popup right after reacting */
+    d.addEventListener("click",function(e){
+      var t=e.target;
+      if(!t||!t.closest)return;
+      var sp=t.closest("#contextEmojis span[data-emoji], .ig-emoji-more span[data-emoji]");
+      if(!sp)return;
+      var o=d.getElementById("contextOverlay");
+      if(o)o.style.display="none";
+      var sh=d.querySelector(".ig-emoji-more");
+      if(sh)sh.style.display="none";
+      var cm=d.querySelector(".context-menu");
+      if(cm)cm.style.visibility="";
+    });
+
+    /* 4. Emoji picker inside the input bar */
   var RK="hp_recent_emojis";
   var CATS=[
     ["Smileys","😀 😃 😄 😁 😆 😅 🤣 😂 🙂 😉 😊 😇 🥰 😍 🤩 😘 😗 😚 😋 😛 😜 🤪 😝 🤗 🤭 🤔 🤐 😐 😑 😶 😏 😒 🙄 😬 😌 😔 😪 😴 😷 🤒 🤕 🤢 🤮 🥵 🥶 🥴 😵 🤯 🥳 😎 🤓 🧐 😕 😟 🙁 😮 😯 😲 😳 🥺 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠 🤬 😈 💀 💩 🤡 👻 👽 🤖"],
