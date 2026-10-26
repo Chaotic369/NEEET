@@ -1265,6 +1265,84 @@ function chatPatch(){
         });
         var setBtn=d.getElementById("settingsBtn");
         if(setBtn)setBtn.addEventListener("click",function(){sTog.checked=soundOn();});
+
+                /* Custom UI dropdown for the notification sound */
+                var ddSel=d.getElementById("notifySoundSelect");
+                if(ddSel&&!d.getElementById("ddSound")){
+                  var ddWrap=d.createElement("div");
+                  ddWrap.className="dd";
+                  ddWrap.id="ddSound";
+                  var ddBtn=d.createElement("button");
+                  ddBtn.type="button";
+                  ddBtn.className="dd-btn";
+                  ddBtn.innerHTML='<span class="dd-label"></span><svg width="12" height="8" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 1.5l5 5 5-5"></path></svg>';
+                  ddWrap.appendChild(ddBtn);
+                  ddSel.style.display="none";
+                  ddSel.parentNode.insertBefore(ddWrap,ddSel);
+                  var ddList=d.createElement("div");
+                  ddList.className="dd-list";
+                  d.body.appendChild(ddList);
+                  function ddLabel(){
+                    var o=ddSel.options[ddSel.selectedIndex];
+                    ddBtn.querySelector(".dd-label").textContent=o?o.textContent:"";
+                  }
+                  function ddClose(){ddList.classList.remove("show");ddBtn.classList.remove("open");}
+                  function ddBuild(){
+                    ddList.innerHTML="";
+                    Array.prototype.forEach.call(ddSel.options,function(o){
+                      var it=d.createElement("div");
+                      it.className="dd-item"+(o.value===ddSel.value?" on":"");
+                      it.innerHTML='<span></span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                      it.firstChild.textContent=o.textContent;
+                      it.addEventListener("click",function(e){
+                        e.stopPropagation();
+                        ddSel.value=o.value;
+                        ddSel.dispatchEvent(new Event("change"));
+                        ddLabel();
+                        ddClose();
+                      });
+                      ddList.appendChild(it);
+                    });
+                  }
+                  function ddOpen(){
+                    ddBuild();
+                    ddList.style.visibility="hidden";
+                    ddList.style.maxHeight="";
+                    ddList.classList.add("show");
+                    var r=ddBtn.getBoundingClientRect();
+                    var w=Math.max(r.width,170);
+                    var h=ddList.offsetHeight;
+                    var below=window.innerHeight-r.bottom-16;
+                    var above=r.top-16;
+                    var up=h>below&&above>below;
+                    var maxH=Math.max(120,up?above:below);
+                    if(h>maxH)h=maxH;
+                    ddList.style.width=w+"px";
+                    ddList.style.maxHeight=maxH+"px";
+                    ddList.style.left=Math.min(Math.max(8,r.right-w),window.innerWidth-w-8)+"px";
+                    ddList.style.top=(up?r.top-8-h:r.bottom+8)+"px";
+                    ddList.style.transformOrigin=up?"bottom right":"top right";
+                    ddList.style.visibility="";
+                    ddBtn.classList.add("open");
+                  }
+                  ddBtn.addEventListener("click",function(e){
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if(ddList.classList.contains("show"))ddClose();else ddOpen();
+                  });
+                  d.addEventListener("click",function(e){
+                    if(!ddList.classList.contains("show"))return;
+                    if(e.target.closest&&(e.target.closest(".dd-list")||e.target.closest("#ddSound")))return;
+                    ddClose();
+                  });
+                  d.addEventListener("keydown",function(e){if(e.key==="Escape")ddClose();},true);
+                  var ddPop=d.querySelector(".settings-popup");
+                  if(ddPop)ddPop.addEventListener("scroll",ddClose,{passive:true});
+                  var ddPrev=d.getElementById("notifySoundPreview");
+                  if(ddPrev)ddPrev.addEventListener("click",function(e){e.preventDefault();});
+                  ddLabel();
+                  setInterval(ddLabel,500);
+                }
               }
 
               /* 15. Quick reactions: drag an emoji from the "more" sheet onto a slot to replace a default */
