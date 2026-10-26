@@ -435,7 +435,36 @@ function chatPatch(){
     }).observe(co,{attributes:true,attributeFilter:["style"]});
   }
 
-  /* 5. Close the reaction popup right after reacting */
+  /* 5a. Preset avatars go through the cropper too */
+    d.addEventListener("click",function(e){
+      var b=e.target.closest?e.target.closest("#cuteAvatarGrid .av-item"):null;
+      if(!b)return;
+      e.stopPropagation();
+      e.preventDefault();
+      var m=/url\(["']?(.*?)["']?\)\s*$/.exec(b.style.backgroundImage||"");
+      var inp=d.getElementById("myAvatarInput");
+      if(!m||!inp)return;
+      var o=b.closest(".av-overlay");
+      if(o)o.classList.remove("show");
+      var im=new Image();
+      im.onload=function(){
+        var c=d.createElement("canvas");
+        c.width=400;c.height=400;
+        c.getContext("2d").drawImage(im,0,0,400,400);
+        c.toBlob(function(bl){
+          if(!bl)return;
+          try{
+            var dt=new DataTransfer();
+            dt.items.add(new File([bl],"avatar.png",{type:"image/png"}));
+            inp.files=dt.files;
+            inp.dispatchEvent(new Event("change"));
+          }catch(err){}
+        },"image/png");
+      };
+      im.src=m[1];
+    },true);
+
+    /* 5. Close the reaction popup right after reacting */
     d.addEventListener("click",function(e){
       var t=e.target;
       if(!t||!t.closest)return;
