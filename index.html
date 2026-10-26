@@ -410,6 +410,12 @@ const CHAT_PATCH_CSS='<style>'
 +'.qr-slot{flex:1;text-align:center;font-size:24px;padding:4px 0;border-radius:12px;background:var(--border);user-select:none;-webkit-user-select:none}'
 +'.qr-slot.over{outline:2px solid var(--right)}'
 +'.qr-ghost{position:fixed;z-index:99999;pointer-events:none;font-size:34px;line-height:1;transform:translate(-50%,-50%)}'
++'.ep-handle{position:sticky;top:0;z-index:6;height:20px;grid-column:1/-1;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;background:var(--bg);user-select:none;-webkit-user-select:none}'
++'.ep-handle span{display:block;width:38px;height:4px;border-radius:2px;background:var(--text);opacity:.3}'
++'.ep-handle:active{cursor:grabbing}'
++'.ep-handle:active span{opacity:.6}'
++'#emojiPanel .ep-handle~.ep-tabs{top:20px}'
++'.ig-emoji-more .ep-handle~.qr-strip{top:20px}'
 +'</style>';
 function chatPatch(){
   var d=document;
